@@ -21,10 +21,8 @@ These aren't just documentation repackaged. They're patterns we've developed and
   - [6. Permission Allowlists](#6-permission-allowlists)
   - [7. Useful Settings](#7-useful-settings)
 - **Workflow**
-  - [8. Offload to Local Models with Ollama](#8-offload-to-local-models-with-ollama)
-  - [9. Prompt Contract for Delegated Work](#9-prompt-contract-for-delegated-work)
-  - [10. Memory System](#10-memory-system)
-  - [11. Pipe Anything into Claude](#11-pipe-anything-into-claude)
+  - [8. Memory System](#8-memory-system)
+  - [9. Pipe Anything into Claude](#9-pipe-anything-into-claude)
 - [Quick Reference](#quick-reference)
 - [Resources](#resources)
 
@@ -299,68 +297,7 @@ Edit with `/config` inside a session or directly in `~/.claude/settings.json`:
 
 ## Workflow
 
-### 8. Offload to Local Models with Ollama
-
-If you run [Ollama](https://ollama.com) locally, you can connect it to Claude Code via an MCP server and delegate token-heavy tasks to a free local model — file reading, code review, boilerplate generation, test scaffolding.
-
-**The savings are real:** Delegating a file read to Ollama instead of having Claude read it directly saves ~75–90% of tokens on that task. The file contents never enter Claude's context window.
-
-**What to delegate:**
-
-| Send to Ollama | Keep in Claude |
-|---|---|
-| File reading/summarizing | Architecture & design decisions |
-| Boilerplate generation (CRUD, models, templates) | Multi-step debugging |
-| First-pass code review / lint | Anything needing Claude's tools (git, search, edit) |
-| Test scaffolding | Security-sensitive analysis |
-| Mechanical refactors | Final review of Ollama's output |
-| Verbose explanations | Complex logic where reasoning quality matters |
-
-**Key rule:** Ollama output is always a draft. Review it before committing — in our experience, early on it needed corrections every time. With the prompt contract below, it improved to near-mergeable on first pass.
-
-**Setup:** Install an MCP server that bridges Claude to Ollama (like [OllamaClaude](https://github.com/search?q=ollama+claude+mcp)). Configure it in your Claude settings and test with a simple file review.
-
----
-
-### 9. Prompt Contract for Delegated Work
-
-When delegating to a local model, inconsistent output wastes more time than it saves. We developed a rules preamble through trial and error — each rule exists because we hit that specific failure mode.
-
-**Paste this into every delegated task:**
-
-```
-RULES:
-1. Output ONLY what was asked. No preamble, no "Here is...", no closing summary.
-2. Code output: a single fenced block, no prose. Prose output: bullets only.
-3. NEVER invent imports, function names, fixtures, or attributes. If you need
-   something not in the context, write TODO(claude): <what you need> instead.
-4. Match the existing file's style exactly: import order, quote style, type hints.
-5. Yes/no questions: verdict line FIRST, then at most 5 supporting bullets.
-6. Do not restate my question back to me.
-7. If less than 80% confident, say UNCERTAIN: <why> instead of bluffing.
-8. When I say "prefer X over Y", use X. Don't substitute Y because it's familiar.
-9. When monkeypatching, capture the original in a local variable FIRST.
-10. List every import your generated code needs. Re-read and check each name.
-11. For each test, re-read the spec and confirm the assertion matches —
-    especially fallback cases and dict-vs-list fixture shapes.
-```
-
-**Why each rule exists:**
-
-| Rule | Failure it prevents |
-|---|---|
-| 3 | Invented imports that don't exist in the repo |
-| 7 | Confident-sounding wrong answers |
-| 8 | Ignored explicit "prefer X" instructions |
-| 9 | Self-recursive monkeypatch (patched `time.time` referencing `time.time`) |
-| 10 | Generated code missing critical imports |
-| 11 | Test assertions contradicting the spec |
-
-**Track your own failures.** When the local model makes a new mistake, add a rule. The preamble is a living document — ours went from 7 rules to 11 in two days, and the correction rate dropped to near zero.
-
----
-
-### 10. Memory System
+### 8. Memory System
 
 Claude Code has a built-in auto-memory feature that persists information across sessions. Instead of re-explaining who you are and how you work every time, teach it once.
 
@@ -397,7 +334,7 @@ PR work scheduled after that date.
 
 ---
 
-### 11. Pipe Anything into Claude
+### 9. Pipe Anything into Claude
 
 Use `-p` (print mode) to send one-shot prompts and pipe in files, diffs, or logs:
 
@@ -467,7 +404,7 @@ claude-code-tips/
 
 - [Claude Code Docs](https://docs.anthropic.com/en/docs/claude-code) — Official documentation
 - [Claude Code GitHub](https://github.com/anthropics/claude-code) — Report issues, check releases
-- [Ollama](https://ollama.com) — Run local models for delegation
+
 
 ---
 
