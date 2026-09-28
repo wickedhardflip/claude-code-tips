@@ -23,6 +23,7 @@ These aren't just documentation repackaged. They're patterns we've developed and
 - **Workflow**
   - [8. Memory System](#8-memory-system)
   - [9. Pipe Anything into Claude](#9-pipe-anything-into-claude)
+  - [10. `/wrap`: Checkpoint a Session](#10-wrap-checkpoint-a-session)
 - [Quick Reference](#quick-reference)
 - [Resources](#resources)
 
@@ -360,6 +361,31 @@ git diff | claude -p "review for bugs"
 Get-Content errors.log -Tail 100 | claude -p "what's going wrong?"
 ```
 
+### 10. `/wrap`: Checkpoint a Session
+
+Long sessions end with reboots, context limits, or "I'll finish tomorrow." `/wrap` is a custom skill that saves everything a fresh session needs to pick up where you left off:
+
+- **Memory:** updates or creates memory files for new decisions and preferences, and keeps the `MEMORY.md` index in sync
+- **Resume docs:** updates the `NEXT.md` / `TASKS.md` / `CONTEXT.md` files the project already has, and moves the "start here" marker
+- **Journal:** appends a dated entry to `logs/journal.md` if you keep one
+- **Git:** commits this session's files in every repo touched, staged by explicit path with a secrets check. **It never pushes.**
+- **Loose ends:** stops background servers or watchers and lists anything waiting on you (reboot, login)
+- **Report:** a fixed summary ending with the exact phrase to resume with
+
+**Install** (works in every project):
+
+```bash
+mkdir -p ~/.claude/skills/wrap
+curl -o ~/.claude/skills/wrap/SKILL.md https://raw.githubusercontent.com/wickedhardflip/claude-code-tips/master/skills/wrap/SKILL.md
+```
+
+```powershell
+New-Item -ItemType Directory -Force "$HOME\.claude\skills\wrap" | Out-Null
+Invoke-WebRequest https://raw.githubusercontent.com/wickedhardflip/claude-code-tips/master/skills/wrap/SKILL.md -OutFile "$HOME\.claude\skills\wrap\SKILL.md"
+```
+
+Then type `/wrap` at the end of a session. The skill sets `disable-model-invocation: true`, so it only runs when you ask for it.
+
 ---
 
 ## Quick Reference
@@ -395,6 +421,8 @@ claude-code-tips/
 ├── README.md              # This file
 ├── scripts/
 │   └── statusline.ps1     # Custom status line script (PowerShell)
+├── skills/
+│   └── wrap/SKILL.md      # /wrap session checkpoint skill
 └── LICENSE
 ```
 
