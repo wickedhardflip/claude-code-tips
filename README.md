@@ -24,6 +24,8 @@ These aren't just documentation repackaged. They're patterns we've developed and
   - [8. Memory System](#8-memory-system)
   - [9. Pipe Anything into Claude](#9-pipe-anything-into-claude)
   - [10. `/wrap`: Checkpoint a Session](#10-wrap-checkpoint-a-session)
+  - [12. Mods: Info That Doesn't Scroll Away](#12-mods-info-that-doesnt-scroll-away)
+  - [13. Lazy Senior Dev: Write Less Code](#13-lazy-senior-dev-write-less-code)
 - [Quick Reference](#quick-reference)
 - [Resources](#resources)
 
@@ -386,6 +388,96 @@ Invoke-WebRequest https://raw.githubusercontent.com/wickedhardflip/claude-code-t
 
 Then type `/wrap` at the end of a session. The skill sets `disable-model-invocation: true`, so it only runs when you ask for it.
 
+### 12. Mods: Info That Doesn't Scroll Away
+
+Mods are small plugins of function hooks that run inside Claude Code and put information in a fixed spot: the status line, or a band above the prompt. Three of ours are public in [claude-code-mods](https://github.com/wickedhardflip/claude-code-mods) (MIT), each written with Claude's help.
+
+| Mod | What it shows | Where | Tokens? |
+| --- | --- | --- | --- |
+| `subagent-models` | Which model each subagent runs on, e.g. `agents: haiku-4-5 ✓, sonnet-5-5` | Status line | No |
+| `session-recap` | 2-5 bullets on what the last prompt did, plus questions Claude is still waiting on | Band above prompt | One small Haiku call per prompt |
+| `run-breakdown` | After a long run: model and effort for the main session, each subagent, and Gemini/Ollama calls | Band above prompt | No |
+
+**Why:** a long run buries the question or result you need. Mixed model setups make it easy to lose track of what ran where.
+
+**Requirements:** a Claude Code build with hook modules turned on. Built and tested on 2.1.287 on Windows.
+
+**Try one for a session** (nothing saved):
+
+```powershell
+git clone https://github.com/wickedhardflip/claude-code-mods.git
+claude --plugin-dir .\claude-code-mods\subagent-models
+```
+
+Repeat `--plugin-dir` to load several.
+
+**Load them every session:** add `CLAUDE_CODE_PLUGIN_DIRS` to the `env` block of `~/.claude/settings.json`, folders separated by `;` on Windows or `:` on macOS/Linux, then open a new terminal.
+
+```json
+{
+  "env": {
+    "CLAUDE_CODE_PLUGIN_DIRS": "C:\path\to\claude-code-mods\subagent-models;C:\path\to\claude-code-mods\session-recap;C:\path\to\claude-code-mods\run-breakdown"
+  }
+}
+```
+
+Use your user settings, not a project's; project settings are ignored for this.
+
+**Tips:**
+- Try a mod with `--plugin-dir` first and add it to the always-on list only after it behaves.
+- `run-breakdown` only appears after runs longer than `MIN_MS` (in `hooks/register.tsx`), and its Gemini/Ollama tool prefixes are specific to our setup, so change them to yours.
+- To undo, remove the folder from `CLAUDE_CODE_PLUGIN_DIRS`.
+
+Each mod's README in the repo has the details.
+
+### 13. Lazy Senior Dev: Write Less Code
+
+Agents tend to over-build: extra abstractions, new dependencies for five lines, helpers that already exist two files over. This `CLAUDE.md` section makes them check a short ladder before writing anything. It is adapted from [ponytail](https://github.com/DietrichGebert/ponytail) (MIT) by Dietrich Gebert, a full plugin for the same idea. We took only the prompt rules, with no hooks, and softened its output limit into a 4-line prose cap.
+
+```markdown
+## Code Style: Lazy Senior Dev
+
+The best code is the code never written. Before adding code, stop at the first rung that holds:
+
+1. **Needed at all?** Speculative need → skip it and say so in one line.
+2. **Already in this codebase?** Reuse the existing helper/util/pattern. Grep before writing.
+3. **Stdlib does it?** Use it.
+4. **Native feature covers it?** HTML/CSS/HTMX over JS, DB constraint over app code.
+5. **Installed dependency does it?** Use it. Never add a new one for a few lines.
+6. **One line?** Write one line.
+7. **Only then** write the minimum that works.
+
+Understand the task and trace the real flow first; the ladder runs after that, not instead of it.
+
+- **Bug fix = root cause.** Grep every caller before editing; fix once in the shared place, not per caller.
+- **No unrequested abstractions:** no interface with one implementation, no config for a constant, no scaffolding "for later."
+- **Ship the simple version** and question it in the same message ("Did X; Y covers it. Need full X?") instead of stalling.
+- **Mark deliberate corner-cutting** with `# simplified: <ceiling>, <upgrade path>` so it's greppable later.
+- Never trade away validation, error handling, security, or accessibility for brevity.
+- **Prose cap: max 4 short lines** after code or a result. Longer only when I ask for a walkthrough, review, or report.
+```
+
+**Why each part helps:**
+- **The ladder:** the cheapest code is the code you don't write, and reuse beats new code.
+- **Root cause:** one fix in the shared function beats a patch in every caller.
+- **`# simplified:` tags:** known shortcuts stay findable instead of becoming surprises.
+- **Prose cap:** shorter replies cost fewer output tokens and are faster to read. Change the number to taste.
+
+**Subagents:** add this to every subagent brief, since they don't always read your `CLAUDE.md`: "Reuse existing helpers; add no new dependencies or abstractions beyond what's asked; mark deliberate simplifications with `# simplified:`."
+
+**Want the full thing?** ponytail adds hooks, intensity levels (`lite`/`full`/`ultra`), and `/ponytail-review`, `/ponytail-audit`, and `/ponytail-debt` commands, and works with many agents. See its [README](https://github.com/DietrichGebert/ponytail) and benchmarks. Its hooks run on every prompt and subagent start, so read them before installing.
+
+**Try it:** paste this into Claude Code:
+
+```text
+Add the "Code Style: Lazy Senior Dev" section from section 13 of
+https://github.com/wickedhardflip/claude-code-tips to my user-level CLAUDE.md
+(~/.claude/CLAUDE.md). Show me the exact text before you write it, and don't
+change anything else.
+```
+
+To undo, delete the section.
+
 ---
 
 ## Quick Reference
@@ -432,6 +524,8 @@ claude-code-tips/
 
 - [Claude Code Docs](https://docs.anthropic.com/en/docs/claude-code) — Official documentation
 - [Claude Code GitHub](https://github.com/anthropics/claude-code) — Report issues, check releases
+- [claude-code-mods](https://github.com/wickedhardflip/claude-code-mods) — The mods from section 12
+- [ponytail](https://github.com/DietrichGebert/ponytail) — Source of the ladder in section 13
 
 
 ---
