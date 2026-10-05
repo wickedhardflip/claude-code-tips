@@ -24,8 +24,12 @@ These aren't just documentation repackaged. They're patterns we've developed and
   - [8. Memory System](#8-memory-system)
   - [9. Pipe Anything into Claude](#9-pipe-anything-into-claude)
   - [10. `/wrap`: Checkpoint a Session](#10-wrap-checkpoint-a-session)
+<<<<<<< Updated upstream
   - [12. Mods: Info That Doesn't Scroll Away](#12-mods-info-that-doesnt-scroll-away)
   - [13. Lazy Senior Dev: Write Less Code](#13-lazy-senior-dev-write-less-code)
+=======
+  - [11. Tuning for Opus 5.5 (Token Budget)](#11-tuning-for-opus-55-token-budget)
+>>>>>>> Stashed changes
 - [Quick Reference](#quick-reference)
 - [Resources](#resources)
 
@@ -388,6 +392,7 @@ Invoke-WebRequest https://raw.githubusercontent.com/wickedhardflip/claude-code-t
 
 Then type `/wrap` at the end of a session. The skill sets `disable-model-invocation: true`, so it only runs when you ask for it.
 
+<<<<<<< Updated upstream
 ### 12. Mods: Info That Doesn't Scroll Away
 
 Mods are small plugins of function hooks that run inside Claude Code and put information in a fixed spot: the status line, or a band above the prompt. Three of ours are public in [claude-code-mods](https://github.com/wickedhardflip/claude-code-mods) (MIT), each written with Claude's help.
@@ -477,6 +482,48 @@ change anything else.
 ```
 
 To undo, delete the section.
+=======
+### 11. Tuning for Opus 5.5 (Token Budget)
+
+Opus 5.5 always thinks before answering, and those thinking tokens count against your plan. It also keeps going longer on multi-step tasks. Three short `CLAUDE.md` sections, based on Anthropic's Opus 5.5 prompting guidance, keep it productive without burning through a $20 plan. On a personal Pro account, older Opus 5 hit the limits fast; Opus 5.5 with these rules runs daily without hitting them.
+
+```markdown
+## Task Persistence
+
+When a task has multiple steps or will run long, keep a checklist in TASKS.md. Tick each item when it's done, and add anything new you find. Read the file at the start of a session rather than re-deriving state from scrollback.
+
+## Agentic Run Behavior
+
+When a step doesn't need my input, keep going. Put status notes in the same message as your next action.
+Stop and ask only when you can't continue without me, or before anything destructive: deleting data, force-pushing, or changing anything outside this repository.
+
+Once you have answered something, treat that answer as done. Don't go back over an earlier answer unless I ask about it or point out a problem with it.
+
+## Token Efficiency
+
+- Default to low/medium effort for routine work (edits, Q&A, simple fixes)
+- Use high effort only for architecture, complex debugging, or multi-step planning
+```
+
+**Why each one helps:**
+
+- **Task Persistence:** state lives in a small file instead of being rebuilt from a long conversation.
+- **Agentic Run Behavior:** fewer stop-and-ask round trips, and no re-thinking questions that are already settled.
+- **Token Efficiency:** high effort means more thinking tokens, so save it for work that needs it.
+
+**Habit:** run `/clear` between unrelated tasks. Every turn resends the whole conversation, so a long session costs more per message than a fresh one.
+
+**Try it:** paste this into Claude Code to add the rules to your user-level `CLAUDE.md`:
+
+```text
+Add the "Task Persistence", "Agentic Run Behavior", and "Token Efficiency" sections from
+section 11 of https://github.com/wickedhardflip/claude-code-tips to my user-level
+CLAUDE.md (~/.claude/CLAUDE.md). Create the file if it doesn't exist. Show me the exact
+text before you write it, and don't change anything else.
+```
+
+To undo, delete the three sections.
+>>>>>>> Stashed changes
 
 ---
 
