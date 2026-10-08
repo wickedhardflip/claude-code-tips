@@ -27,6 +27,7 @@ These aren't just documentation repackaged. They're patterns we've developed and
   - [11. Tuning for Opus 5.5 (Token Budget)](#11-tuning-for-opus-55-token-budget)
   - [12. Mods: Info That Doesn't Scroll Away](#12-mods-info-that-doesnt-scroll-away)
   - [13. Lazy Senior Dev: Write Less Code](#13-lazy-senior-dev-write-less-code)
+  - [14. Voice Guide: Drafts That Sound Like You](#14-voice-guide-drafts-that-sound-like-you)
 - [Quick Reference](#quick-reference)
 - [Resources](#resources)
 
@@ -520,6 +521,83 @@ change anything else.
 
 To undo, delete the section.
 
+### 14. Voice Guide: Drafts That Sound Like You
+
+Ask Claude to draft an email and you get "I hope this finds you well," bullet lists, and "Please don't hesitate to reach out." Nobody who knows you would believe you wrote it. A voice guide is a memory file built from your own sent mail. It tells Claude how you open and close by audience, which words you use, and which you never use. Claude reads it before every draft.
+
+**What it is:** one memory file (see [Memory System](#8-memory-system)), plus one line in whatever skill or `CLAUDE.md` section handles drafting so Claude reads it first. Blank template: [`templates/voice-guide.md`](templates/voice-guide.md).
+
+**Step 1: Get real samples.** You need your typed mail, not summaries. Claude in Outlook, or any assistant that can read your Sent Items, can pull it with this prompt:
+
+```text
+I want to build a style guide for how I write, so an AI assistant can draft messages that
+sound like me. Please go through my Sent Items and pull real examples of my writing. Do not
+rewrite, clean up, or summarize my words. I need them exactly as I typed them, typos included.
+
+WHAT TO PULL
+1. About 40 to 60 emails I sent, spread across different kinds of recipients: end users and
+   staff, my teammates, my manager, executives, and outside vendors or support.
+2. Prefer emails I clearly typed myself. Short replies, quick answers, and back and forth
+   threads are best. Lean toward older mail, from before I started drafting with AI.
+3. Skip automated messages, calendar invites, sharing notifications, forwards with no text
+   from me, and mass templated notices.
+4. If an email looks AI drafted (polished, heavily formatted, long bullet lists, phrases like
+   "I hope this finds you well" or "please don't hesitate"), leave it out, or include it under
+   a separate heading called LIKELY AI DRAFTED so I can see the difference.
+
+FOR EACH EXAMPLE, GIVE ME
+Date sent
+Recipient type (end user, peer, manager, executive, vendor). Type only, no names or addresses.
+Subject line
+My text, verbatim, with quoted reply chains and my signature removed
+Replace any password, key, account number, or other sensitive value with [REDACTED].
+
+THEN GIVE ME YOUR OBSERVATIONS
+Based only on the examples you pulled, and quoting them as evidence:
+1. How I open and close emails, and whether that changes by audience.
+2. Typical length and sentence length.
+3. Words and phrases I use often.
+4. Common words or phrases I never or almost never use, especially corporate or formal ones.
+5. How direct I am when asking for something or saying no.
+6. Punctuation and formatting habits (dashes, bullets, exclamation points, capitals, emoji).
+7. How my tone shifts between end users, peers, my manager, executives, and vendors.
+If you cannot tell something from the examples, say so rather than guessing.
+
+Return everything as plain text in one response so I can copy it out.
+```
+
+No mail assistant? Export 50 or so sent emails to text files instead. Ticket notes and chat messages you typed also work.
+
+**Step 2: Turn it into rules.** Paste the output into Claude Code with:
+
+```text
+Here is an analysis of my sent mail. Turn it into a voice guide memory using the template at
+https://github.com/wickedhardflip/claude-code-tips/blob/master/templates/voice-guide.md.
+Before saving anything:
+- Show me the draft rules.
+- List any of my existing memories or CLAUDE.md rules that conflict with it.
+- List habits from my mail you think should NOT be copied, and why.
+Then wait for my answers.
+```
+
+**Step 3: Wire it in.** Add one line wherever drafting happens: a drafting or clipboard skill, or your `CLAUDE.md`:
+
+```markdown
+Before drafting anything sent under my name, read the voice-guide memory and check the draft
+against its never-use list.
+```
+
+**What we learned building ours:**
+- **Filter out AI-drafted mail.** If you have been drafting with Claude for months, a lot of your recent "sent" mail is Claude's voice. Learning from it just teaches Claude to copy itself. Older mail is safer.
+- **Your mail will contradict old rules.** We had a "no greeting or sign-off" rule. The mail showed the greetings were typed by hand and only the signature block was automatic. The analysis caught a rule we had wrong.
+- **Don't copy everything.** Typos, questions ending in a period, and trailing ellipses are real habits, but in a draft they look like mistakes. Gendered address like "sir" also stays out unless you add it yourself, since Claude can't know who the recipient is.
+- **Audience matters more than vocabulary.** The biggest gain was per-audience openers and closers: no greeting for peers, status first for your manager, a warm close for executives and vendors.
+- **The never-use list does the most work.** "Leverage," "circle back," "kindly," "Additionally," and "Best regards" mark a draft as generated faster than anything else.
+
+**Try it:** run the Step 1 prompt, then paste the result into Claude Code with the Step 2 prompt.
+
+To undo, delete the memory file and the line from Step 3.
+
 ---
 
 ## Quick Reference
@@ -557,6 +635,8 @@ claude-code-tips/
 │   └── statusline.ps1     # Custom status line script (PowerShell)
 ├── skills/
 │   └── wrap/SKILL.md      # /wrap session checkpoint skill
+├── templates/
+│   └── voice-guide.md     # Voice guide memory template (section 14)
 └── LICENSE
 ```
 
