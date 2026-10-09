@@ -28,6 +28,7 @@ These aren't just documentation repackaged. They're patterns we've developed and
   - [12. Mods: Info That Doesn't Scroll Away](#12-mods-info-that-doesnt-scroll-away)
   - [13. Lazy Senior Dev: Write Less Code](#13-lazy-senior-dev-write-less-code)
   - [14. Voice Guide: Drafts That Sound Like You](#14-voice-guide-drafts-that-sound-like-you)
+  - [15. `/delegate`: Route Work to the Cheapest Capable Agent](#15-delegate-route-work-to-the-cheapest-capable-agent)
 - [Quick Reference](#quick-reference)
 - [Resources](#resources)
 
@@ -600,6 +601,24 @@ To undo, delete the memory file and the line from Step 3.
 
 ---
 
+### 15. `/delegate`: Route Work to the Cheapest Capable Agent
+
+Left alone, the main session does everything itself: reads big files, rewrites docs, sweeps the repo, all at top-model prices. The `delegate` skill makes it split the work first, send each piece to the cheapest worker that can do it, manage the background agents, and check what comes back.
+
+**Install:** copy [`skills/delegate/SKILL.md`](skills/delegate/SKILL.md) to `~/.claude/skills/delegate/SKILL.md`. Run it with `/delegate`, or add one line to `CLAUDE.md` so it applies by default: *"Before any multi-step or parallel work, use the delegate skill and state the split in one line."*
+
+**What it does:**
+- **Routes by job:** Haiku for mechanical sweeps and inventories, Sonnet for clear-step implementation and doc rewrites, Opus for hard debugging, design and security review. The lead session keeps planning, destructive steps, secrets and deploys.
+- **Optional tiers:** if you run a local model (Ollama) it becomes the first rung, free and good for reading local files and boilerplate. If you have a paid external API (Gemini or similar) it becomes the last rung, and the skill asks before each billed call. With neither, the ladder is just Haiku, Sonnet, Opus.
+- **Briefs with stop rules:** every agent gets a goal, exact paths, "stop and report if blocked, max 2 retries, never push or delete", secret-handling rules and a short report format. Code-changing agents get their own git worktree.
+- **Manages the run:** background agents in parallel when they share no files, a cap of about 3, and a pause check (`ListAgents`, `SendMessage`, `TaskStop`) when one goes quiet.
+- **Verifies:** reads the real diff and runs the tests instead of trusting a summary. In our first test a Haiku agent reported a branch as unmerged when it pointed at the same commit as `main`; the check caught it.
+- **Reports in one line:** what went where, so you can see the savings.
+
+**Why a skill:** a rule that only lives in memory or `CLAUDE.md` gets skipped when a task starts. A skill gives the model a procedure to run at the start of the task, which is when the decision matters.
+
+---
+
 ## Quick Reference
 
 ### Session Management
@@ -634,7 +653,8 @@ claude-code-tips/
 ├── scripts/
 │   └── statusline.ps1     # Custom status line script (PowerShell)
 ├── skills/
-│   └── wrap/SKILL.md      # /wrap session checkpoint skill
+│   ├── wrap/SKILL.md      # /wrap session checkpoint skill
+│   └── delegate/SKILL.md  # /delegate agent routing + management skill
 ├── templates/
 │   └── voice-guide.md     # Voice guide memory template (section 14)
 └── LICENSE
