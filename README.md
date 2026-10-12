@@ -29,6 +29,7 @@ These aren't just documentation repackaged. They're patterns we've developed and
   - [13. Lazy Senior Dev: Write Less Code](#13-lazy-senior-dev-write-less-code)
   - [14. Voice Guide: Drafts That Sound Like You](#14-voice-guide-drafts-that-sound-like-you)
   - [15. `/delegate`: Route Work to the Cheapest Capable Agent](#15-delegate-route-work-to-the-cheapest-capable-agent)
+  - [16. `/voice`: Talk Instead of Type](#16-voice-talk-instead-of-type)
 - [Quick Reference](#quick-reference)
 - [Resources](#resources)
 
@@ -619,6 +620,23 @@ Left alone, the main session does everything itself: reads big files, rewrites d
 
 ---
 
+### 16. `/voice`: Talk Instead of Type
+
+Long prompts are faster to say than to type, especially a rambling "here's what I'm seeing, here's what I want" brief. `/voice` turns on dictation in the prompt box.
+
+**Turn it on:** type `/voice`. Claude Code confirms with `Voice mode enabled (hold)`. Run `/voice` again to turn it off (`Voice mode disabled`).
+
+**Use it:** hold the space bar to record, release when you're done, and your words land in the prompt. Review the text, then send it like any other prompt.
+
+**Language:** dictation defaults to English. The confirmation line names the current language, and `/config` is where you change it.
+
+**Tips:**
+- Dictate the messy first draft of a task, then fix names, paths and commands by keyboard. Speech-to-text gets prose right and identifiers wrong.
+- It pairs well with the [memory system](#8-memory-system) and `CLAUDE.md`: you can talk loosely because Claude already knows your conventions.
+- Not to be confused with [tip 14](#14-voice-guide-drafts-that-sound-like-you), the Voice Guide, which is about how your *writing* sounds.
+
+---
+
 ## Quick Reference
 
 ### Session Management
@@ -633,6 +651,7 @@ Left alone, the main session does everything itself: reads big files, rewrites d
 | `/model` | Switch model mid-session |
 | `/fast` | Toggle fast mode (same model, faster output) |
 | `/config` | Open settings |
+| `/voice` | Toggle dictation: hold space to record (see [tip 16](#16-voice-talk-instead-of-type)) |
 
 ### Running Modes
 
