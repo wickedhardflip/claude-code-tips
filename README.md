@@ -4,6 +4,8 @@ Practical shortcuts, configs, and workflows for [Claude Code](https://docs.anthr
 
 These aren't just documentation repackaged. They're patterns we've developed and refined through daily use — things that actually changed how we work.
 
+**Where tips come from:** not all of these started with us. We pick up ideas from other people's repos, posts, docs and talks, try them in our own daily work, and keep what holds up. By the time a tip lands here it has been changed to fit how we work, often a lot. When we know where an idea came from, we say so in the tip and list it under [Resources](#resources). If you spot your idea here without credit, open an issue and we'll add it.
+
 > **Contributions welcome** — open a PR to add your own tips.
 
 ---
@@ -30,6 +32,7 @@ These aren't just documentation repackaged. They're patterns we've developed and
   - [14. Voice Guide: Drafts That Sound Like You](#14-voice-guide-drafts-that-sound-like-you)
   - [15. `/delegate`: Route Work to the Cheapest Capable Agent](#15-delegate-route-work-to-the-cheapest-capable-agent)
   - [16. `/voice`: Talk Instead of Type](#16-voice-talk-instead-of-type)
+  - [17. Parallel Sessions: Guard the Deploy, Not Just the Code](#17-parallel-sessions-guard-the-deploy-not-just-the-code)
 - [Quick Reference](#quick-reference)
 - [Resources](#resources)
 
@@ -634,6 +637,68 @@ Long prompts are faster to say than to type, especially a rambling "here's what 
 - Dictate the messy first draft of a task, then fix names, paths and commands by keyboard. Speech-to-text gets prose right and identifiers wrong.
 - It pairs well with the [memory system](#8-memory-system) and `CLAUDE.md`: you can talk loosely because Claude already knows your conventions.
 - Not to be confused with [tip 14](#14-voice-guide-drafts-that-sound-like-you), the Voice Guide, which is about how your *writing* sounds.
+
+---
+
+### 17. Parallel Sessions: Guard the Deploy, Not Just the Code
+
+Running several Claude Code sessions at once on one repo works well when each session has its own git worktree: every session edits its own copy on its own branch, and PRs merge the work. But worktrees protect *editing*, not *deploying*. If your deploy script builds from the local folder it runs in, every session deploys whatever commit its own worktree happens to be on.
+
+**What happened to us:** one session shipped a feature to prod. A few minutes later a second session deployed its own work from a worktree one commit behind, and the first feature silently disappeared from prod. Both sessions were "right" about their own code. Nobody was told.
+
+**The fix: make the deploy script check three rules before it builds.**
+
+1. **The tree is clean.** Uncommitted files (maybe another session's half-finished work) would ship.
+2. **The commit is on `origin/main`.** Then "what's on prod" is always one commit you can look up.
+3. **The commit contains the one prod runs now.** If it doesn't, deploying would roll someone back.
+
+Rule 3 needs to know what prod runs, so the script writes a one-line record on the server after every deploy. Git answers "does this build contain that commit?" with `git merge-base --is-ancestor`.
+
+```bash
+stop() {
+  if [ -n "$DEPLOY_OVERRIDE" ]; then echo "override ($DEPLOY_OVERRIDE): $1"; return 0; fi
+  echo "STOP: $1"; exit 1
+}
+
+# Before building
+git fetch -q origin main
+HEAD_SHA=$(git rev-parse HEAD)
+PROD_SHA=$(ssh deploy@prod-host 'cut -f1 ~/prod-deployed 2>/dev/null' || true)
+
+[ -z "$(git status --porcelain)" ] || stop "uncommitted changes would ship"
+git merge-base --is-ancestor "$HEAD_SHA" origin/main || stop "not on origin/main, merge the PR first"
+[ -z "$PROD_SHA" ] || git merge-base --is-ancestor "$PROD_SHA" "$HEAD_SHA" \
+  || stop "prod runs $PROD_SHA, which this build does not contain"
+
+# ... build and deploy as before ...
+
+# After a successful deploy: commit, UTC time, who, override reason (if any)
+printf '%s\t%s\t%s\t%s\n' "$HEAD_SHA" "$(date -u +%FT%RZ)" "$(git config user.name)" "$DEPLOY_OVERRIDE" \
+  | ssh deploy@prod-host 'cat > ~/prod-deployed && cat ~/prod-deployed >> ~/prod-deploys.log'
+```
+
+Change `deploy@prod-host` and the record path to yours. Keep the record outside the folder your deploy wipes.
+
+**Why it's worth it:**
+- **It can't be forgotten.** A rule in `CLAUDE.md` or memory only works if the session reads it at the right moment. A script check runs every time, for people and agents alike.
+- **It costs no tokens.** It's a shell check, not a conversation. The rollback cleanup it prevents cost us several turns across two sessions.
+- **Rollbacks still work.** Revert the bad commit on main and deploy; the revert is a new commit that contains everything before it, so rule 3 passes.
+- **There's a way out on purpose.** Set `DEPLOY_OVERRIDE="<reason>"` to break a rule deliberately; the reason goes in the record.
+
+**One catch:** if you deploy cherry-picked commits (say, to hold one PR back), those commits get new IDs that aren't on main, so the next normal deploy needs an override too. We now treat "prod deploys only from main" as the rule and the override as the exception.
+
+**Sessions can also talk to each other.** In the Claude Code build we run, sessions on the same machine can list and message each other, and after the incident another session asked ours "what's on prod, and is it safe to build from main?" before it deployed. Naming sessions (for example with `/rename`) makes them easy to address. That coordination is useful, but the script check is what makes it unnecessary for deploys.
+
+**Try it:** paste this into Claude Code in your repo:
+
+```text
+Read section 17 of https://github.com/wickedhardflip/claude-code-tips. Add the same three
+deploy checks and the prod record to my deploy script. Show me the diff before you write
+it, keep everything else the same, and test each rule (clean tree, on main, contains prod)
+without running a real deploy.
+```
+
+To undo, remove the checks and the record lines from the script.
 
 ---
 
