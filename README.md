@@ -33,6 +33,7 @@ These aren't just documentation repackaged. They're patterns we've developed and
   - [15. `/delegate`: Route Work to the Cheapest Capable Agent](#15-delegate-route-work-to-the-cheapest-capable-agent)
   - [16. `/voice`: Talk Instead of Type](#16-voice-talk-instead-of-type)
   - [17. Parallel Sessions: Guard the Deploy, Not Just the Code](#17-parallel-sessions-guard-the-deploy-not-just-the-code)
+  - [18. Code-Rendered Video Workflow](#18-code-rendered-video-workflow)
 - [Quick Reference](#quick-reference)
 - [Resources](#resources)
 
@@ -702,6 +703,16 @@ To undo, remove the checks and the record lines from the script.
 
 ---
 
+### 18. Code-Rendered Video Workflow
+
+Claude can't output an MP4, but it can write a program that a headless browser renders frame by frame. The [`video/`](video/) folder is the whole kit: Remotion rig notes, brief / style guide / shot list templates, a critic prompt, QA scripts and a procedural-audio helper. Copy it to a new machine and the workflow comes with it.
+
+**The loop:** write a brief with real assets, then a style guide and shot list, then render stills into a contact sheet, then a fresh agent scores the sheet and you fix the worst 3 defects, then QA (determinism, blank frames, phone-size readability, loop point) and deliver one 1080p file.
+
+**Start here:** [`video/README.md`](video/README.md). Drop [`video/templates/CLAUDE.video.md`](video/templates/CLAUDE.video.md) into the project root as `CLAUDE.md` for the house rules.
+
+---
+
 ## Quick Reference
 
 ### Session Management
@@ -741,6 +752,10 @@ claude-code-tips/
 │   └── delegate/SKILL.md  # /delegate agent routing + management skill
 ├── templates/
 │   └── voice-guide.md     # Voice guide memory template (section 14)
+├── video/                 # Code-rendered video workflow (section 18)
+│   ├── README.md
+│   ├── scripts/           # stills, qa, determinism, beats, synth helpers
+│   └── templates/         # brief, style guide, shot list, critic prompt, checklist
 └── LICENSE
 ```
 
