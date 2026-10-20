@@ -34,6 +34,8 @@ These aren't just documentation repackaged. They're patterns we've developed and
   - [16. `/voice`: Talk Instead of Type](#16-voice-talk-instead-of-type)
   - [17. Parallel Sessions: Guard the Deploy, Not Just the Code](#17-parallel-sessions-guard-the-deploy-not-just-the-code)
   - [18. Code-Rendered Video Workflow](#18-code-rendered-video-workflow)
+  - [19. `/tokenwatch`: Measure Token Burn, Don't Guess](#19-tokenwatch-measure-token-burn-dont-guess)
+  - [20. Weekly Maintenance: A Self-Renewing Check-In](#20-weekly-maintenance-a-self-renewing-check-in)
 - [Quick Reference](#quick-reference)
 - [Resources](#resources)
 
@@ -713,6 +715,81 @@ Claude can't output an MP4, but it can write a program that a headless browser r
 
 ---
 
+### 19. `/tokenwatch`: Measure Token Burn, Don't Guess
+
+Claude Code writes the exact token usage of every turn into its transcript files under `~/.claude/projects/`. [`scripts/token-usage-report.py`](scripts/token-usage-report.py) reads them and reports, per model and per lane (main session vs subagents): turns, cache reads, cache writes, output, dollars, and **$/turn**. The [`/tokenwatch`](skills/tokenwatch/SKILL.md) skill runs it and turns the result into one change to make.
+
+**What measuring changed for us:** we assumed big files were the problem. The first report said `CLAUDE.md` and memory together were about 1% of the bill. Re-reading conversation history every turn was 64%, because sessions grew to almost a million tokens of context before anything compacted them. One setting, `autoCompactWindow`, was the biggest lever.
+
+**The levers, in the order they paid off:**
+
+1. **`autoCompactWindow`** in `~/.claude/settings.json` (we use `300000`). On a 1M-context model the default lets a session grow far past the point where every turn is expensive.
+2. **`CLAUDE_CODE_SUBAGENT_MODEL`** (we use `sonnet`) in the `env` block. Without it a subagent inherits the main model, so handing work to an agent saves nothing.
+3. **A `CLAUDE.md` rule to keep tool output small** (below). Every token a tool returns is written to cache once and re-read on every later turn.
+4. **Effort** at `medium` for routine work, as in section 11.
+
+```markdown
+- **Keep tool output small.** Every token a tool returns is written to cache once and re-read
+  on every later turn. Read the lines you need, not the whole file; use `head`, `--limit`,
+  `-n`, filters, and `--quiet` flags; send bulky output to a subagent. Never trim so far that
+  the evidence for a decision goes missing.
+- **Prefer parallel subagents when a task splits** into bulky, independent pieces that need
+  little of the current context. Stay inline for small pieces or steps that each need the
+  previous step's output. Each agent pays its own startup cost, and anything it must re-read
+  is paid twice.
+```
+
+**Track $/turn, not total spend.** Total moves with how much work you did that week. $/turn shows whether the configuration is working. Every run appends to `token-usage-history.csv`, which matters because Claude Code deletes transcripts after `cleanupPeriodDays` (30 by default). Our main-session cost went from $0.243/turn (September) to $0.089/turn (October). That includes a model change as well as the settings, so it isn't the settings alone.
+
+**Two measurement bugs we hit, so you don't:**
+- **Subagent transcripts live in `<session>/subagents/*.jsonl`**, not beside the session file. Read only the top level and subagent turns show as 0 even when offload works.
+- **Claude Code main sessions write 1-hour cache entries, which cost 2x input**, not the 1.25x of 5-minute writes. Price them all at 1.25x and the cache-write line comes out far too low.
+
+**Keep prices current.** The `PRICES` table in the script is a snapshot. Check current rates before trusting a total; the script warns about any model it has no price for.
+
+**Try it:** copy `scripts/token-usage-report.py` somewhere stable and `skills/tokenwatch/` to `~/.claude/skills/`, then ask Claude Code "how are we doing on tokens?" Run it again a day after any settings change, and compare $/turn.
+
+---
+
+### 20. Weekly Maintenance: A Self-Renewing Check-In
+
+Some things only get checked when someone remembers to: due dates buried in memory notes, a "temporary" change that never got reverted, worktrees left behind, a memory index growing past budget. We put them in one file and have Claude ask us about them every Tuesday morning.
+
+**Two parts:**
+
+1. **A checklist file**, [`templates/weekly-maintenance.md`](templates/weekly-maintenance.md). Each `##` section is one item: token review (section 19), due-date sweep, temporary changes still open, credential rotations owed (names only), things waiting on you, leftover worktrees, memory hygiene. To add an item, edit the file; the reminder doesn't change.
+2. **A one-shot durable scheduled task that re-schedules itself.** Recurring scheduled tasks expired after 7 days in the build we run, so a weekly recurring job wouldn't last. Instead each run creates the next one, 7 days out.
+
+**The reminder prompt** (create it once with "schedule this as a durable one-shot task for next Tuesday 09:07"):
+
+```text
+WEEKLY MAINTENANCE (self-renewing reminder).
+
+Step 1 - read <workspace>/.claude/weekly-maintenance.md. Then ask first, do nothing else yet:
+"Weekly maintenance is due." List each ## item by number and title, and ask which to run
+(all / pick numbers / none / snooze N days).
+
+Step 2 - schedule the next one no matter the answer: a durable, non-recurring task for 7 days
+after today at 09:07 local (or N days if snoozed), with this exact same prompt text. Confirm
+it is listed. Never skip this step; it is what keeps the weekly cycle alive.
+
+Step 3 - run only the items picked, exactly as each section in the file describes.
+Independent items can run as parallel subagents. Report per item, then one action list of
+anything that needs a decision. Change nothing beyond what an item says without approval.
+```
+
+**Why it's built this way:**
+- **It asks first.** A reminder that runs everything on its own gets ignored or does things you didn't want that day.
+- **Step 2 runs whatever you answer**, including "none". Skip it and the chain is gone.
+- **Items stay local.** Ours read memory and local disk only, with no SSH, APIs, or databases, so the check-in is fast, cheap, and safe to say yes to. Live-system health checks belong in monitoring, not a chat reminder.
+- **Report, don't fix.** Every item proposes; nothing changes without an OK.
+
+**Catches:** the task fires only while a Claude Code session in that folder is open and idle. If a week passes with no prompt, the chain broke: list scheduled tasks and re-create it from the prompt above. With several sessions open you may get it more than once; delete the extras.
+
+**Try it:** copy `templates/weekly-maintenance.md` to `<workspace>/.claude/`, trim the items to what you use, and paste the prompt above into Claude Code with "schedule this as a durable one-shot task for next Tuesday 09:07".
+
+---
+
 ## Quick Reference
 
 ### Session Management
@@ -746,12 +823,15 @@ Claude can't output an MP4, but it can write a program that a headless browser r
 claude-code-tips/
 ├── README.md              # This file
 ├── scripts/
-│   └── statusline.ps1     # Custom status line script (PowerShell)
+│   ├── statusline.ps1     # Custom status line script (PowerShell)
+│   └── token-usage-report.py  # Token burn report from transcripts (section 19)
 ├── skills/
 │   ├── wrap/SKILL.md      # /wrap session checkpoint skill
-│   └── delegate/SKILL.md  # /delegate agent routing + management skill
+│   ├── delegate/SKILL.md  # /delegate agent routing + management skill
+│   └── tokenwatch/SKILL.md  # /tokenwatch token usage check (section 19)
 ├── templates/
-│   └── voice-guide.md     # Voice guide memory template (section 14)
+│   ├── voice-guide.md     # Voice guide memory template (section 14)
+│   └── weekly-maintenance.md  # Weekly check-in items (section 20)
 ├── video/                 # Code-rendered video workflow (section 18)
 │   ├── README.md
 │   ├── scripts/           # stills, qa, determinism, beats, synth helpers
